@@ -2,59 +2,82 @@
  * Name: Ciaran McIlvaney
  */
 
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class Eyeballs : MonoBehaviour
 {
-    // Mouse movement variables 
+    [Header("Mouse Settings")]
     public float mouseSensitivity = 5f;
-    public float smoothing = 1.5f; // Smoother mouse movement 
+    public float smoothing = 1.5f;
 
-    // Vectors to store the calculations
+    [Header("References")]
+    public Transform bodyToRotate;
+
     private Vector2 mouseLook;
     private Vector2 smoothMovement;
 
-    // Reference to the player
-    private GameObject player;
-
-
-    // Start is called before the first frame update
     void Start()
     {
-        // Call reference to the player
-        player = transform.parent.gameObject;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        // This will make your cursor invisible in the game
-        // Press ESC to get cursor back
         Cursor.lockState = CursorLockMode.Locked;
 
-        // Variable for mouse movemment
+        // If no body assigned in inspector, try using parent
+        if (bodyToRotate == null && transform.parent != null)
+        {
+            bodyToRotate = transform.parent;
+        }
+
+        ResetLook();
+    }
+
+    void OnEnable()
+    {
+        ResetLook();
+    }
+
+    void Update()
+    {
+        Cursor.lockState = CursorLockMode.Locked;
+
         Vector2 mouseDirection = new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y"));
 
-        // Times the mouse input by the mouseSensitivity and smoothing
         mouseDirection.x *= mouseSensitivity * smoothing;
         mouseDirection.y *= mouseSensitivity * smoothing;
 
-        // Linear interpolation between two positions. Moving between where the mouse is currently looking as well as the calculations done above
         smoothMovement.x = Mathf.Lerp(smoothMovement.x, mouseDirection.x, 1f / smoothing);
         smoothMovement.y = Mathf.Lerp(smoothMovement.y, mouseDirection.y, 1f / smoothing);
 
-        // Add these calculations together
         mouseLook += smoothMovement;
-
-        // Restrict the mouse position to make sure the player cannot rotate forever on the x-axis
         mouseLook.y = Mathf.Clamp(mouseLook.y, -80f, 90f);
 
-        // Move the camera to the newest calculated position.
+        // vertical camera look
         transform.localRotation = Quaternion.AngleAxis(-mouseLook.y, Vector3.right);
 
-        // Move the player object on the x-axis only
-        player.transform.rotation = Quaternion.AngleAxis(mouseLook.x, player.transform.up);
+        // horizontal player/body rotation
+        if (bodyToRotate != null)
+        {
+            bodyToRotate.rotation = Quaternion.AngleAxis(mouseLook.x, Vector3.up);
+        }
+    }
+
+    public void ResetLook()
+    {
+        smoothMovement = Vector2.zero;
+
+        // Sync stored values with current transforms
+        float yaw = 0f;
+        float pitch = 0f;
+
+        if (bodyToRotate != null)
+        {
+            yaw = bodyToRotate.eulerAngles.y;
+        }
+
+        pitch = transform.localEulerAngles.x;
+        if (pitch > 180f)
+        {
+            pitch -= 360f;
+        }
+
+        mouseLook = new Vector2(yaw, -pitch);
     }
 }
